@@ -60,22 +60,28 @@ The system is composed of multiple services orchestrated with **Docker Compose**
 ```bash
 git clone https://github.com/mlrdevs97/ai-ytb-digest.git
 cd ai-ytb-digest
+```
 
 ### 2. Set environment variables
 
 Copy the example file and add your OpenAI API key:
 
+```bash
 cp .env.example .env
-
+```
 
 Edit .env and set:
 
+```bash
 OPENAI_API_KEY=sk-xxxxxx
+```
 
 ### 3. Run with Docker Compose
+
+```bash
 docker compose up --build
+```
 
 ### 4. Open the client
 
-Go to http://localhost:8888
-, paste a YouTube link, and wait for the digest
+Go to http://localhost:8888, paste a YouTube link, and wait for the digest
