@@ -1,4 +1,4 @@
-# AI YouTube Digest 🎥🤖
+# AI YouTube Digest 🤖
 
 **AI YouTube Digest** is a learning project where I explored how to integrate an AI model into a real application, while also experimenting with a **microservices architecture** in Kotlin and Spring Boot.  
 
