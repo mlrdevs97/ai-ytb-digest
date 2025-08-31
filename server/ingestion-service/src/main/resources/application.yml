@@ -1,0 +1,31 @@
+server:
+  port: ${INGESTION_CONTAINER_PORT}
+
+spring:
+  application:
+    name: ingestion-service
+
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.add.type.headers: false
+
+app:
+  kafka:
+    topics:
+      transcripts: ${TRANSCRIPTS_TOPIC}
+
+logging:
+  level:
+    root: INFO
+    e.m.v.a.configs: DEBUG
+    org.springframework.ai: DEBUG
+    org.springframework.web.reactive.function.client: DEBUG
+    reactor.netty.http.client: INFO
+    org.springframework.kafka: INFO
+    org.springframework.cloud.stream: DEBUG
+    org.springframework.integration: INFO
+

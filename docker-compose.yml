@@ -1,78 +1,89 @@
-version: "3.9"
+  services:
+    kafka:
+      image: bitnami/kafka:3.7
+      container_name: kafka
+      ports:
+        - "${KAFKA_PORT}:9092"
+      environment:
+        KAFKA_ENABLE_KRAFT: "yes"
+        KAFKA_CFG_NODE_ID: "1"
+        KAFKA_CFG_PROCESS_ROLES: "broker,controller"
+        KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: "1@kafka:9093"
+        KAFKA_CFG_LISTENERS: "PLAINTEXT://:9092,CONTROLLER://:9093"
+        KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: "PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT"
+        KAFKA_CFG_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+        KAFKA_CFG_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:9092"
+        KAFKA_CFG_LOG_DIRS: "/bitnami/kafka/data"
+        ALLOW_PLAINTEXT_LISTENER: "yes"
+        KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "true"
+      volumes:
+        - kafka_data:/bitnami/kafka
 
-services:
-  # ---------- Kafka (single-node KRaft) ----------
-  kafka:
-    image: bitnami/kafka:3.7
-    container_name: kafka
-    ports:
-      - "9092:9092"
-    environment:
-      KAFKA_ENABLE_KRAFT: "yes"
-      KAFKA_CFG_NODE_ID: "1"
-      KAFKA_CFG_PROCESS_ROLES: "broker,controller"
-      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: "1@kafka:9093"
-      KAFKA_CFG_LISTENERS: "PLAINTEXT://:9092,CONTROLLER://:9093"
-      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: "PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT"
-      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
-      KAFKA_CFG_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:9092"
-      KAFKA_CFG_LOG_DIRS: "/bitnami/kafka/data"
-      ALLOW_PLAINTEXT_LISTENER: "yes"
-      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "true"
-    volumes:
-      - kafka_data:/bitnami/kafka
-    healthcheck:
-      test: [ "CMD", "bash", "-lc", "kafka-topics.sh --bootstrap-server localhost:9092 --list >/dev/null 2>&1" ]
-      interval: 10s
-      timeout: 5s
-      retries: 10
+    mongo:
+      image: mongo:7
+      container_name: mongo
+      restart: unless-stopped
+      ports:
+        - "${MONGO_PORT}:27017"
+      environment:
+        MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
+        MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+      volumes:
+        - mongo_data:/data/db
 
-  # ---------- Kafka UI (Redpanda Console) ----------
-  redpanda-console:
-    image: docker.redpanda.com/redpanda/console:latest
-    container_name: redpanda-console
-    depends_on:
-      kafka:
-        condition: service_healthy
-    ports:
-      - "8080:8080"
-    command:
-      - "--addr=0.0.0.0:8080"
-      - "--kafka-brokers=kafka:9092"
+    ingestion-service:
+      build:
+        context: ./server/ingestion-service
+      container_name: ingestion-service
+      depends_on:
+        - kafka
+      environment:
+        SPRING_KAFKA_BOOTSTRAP_SERVERS: ${SPRING_KAFKA_BOOTSTRAP_SERVERS}
+        TRANSCRIPTS_TOPIC: ${TRANSCRIPTS_TOPIC}
+        SERVER_PORT: ${INGESTION_CONTAINER_PORT}
+      ports:
+      - "${INGESTION_HOST_PORT}:${INGESTION_CONTAINER_PORT}"
 
-  # ---------- MongoDB ----------
-  mongo:
-    image: mongo:6
-    container_name: mongo
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongo_data:/data/db
+    ai-processor-service:
+      build:
+        context: ./server/ai-processor-service
+      container_name: ai-processor-service
+      depends_on:
+        - kafka
+      environment:
+        SPRING_CLOUD_STREAM_KAFKA_BINDER_BROKERS: ${SPRING_KAFKA_BOOTSTRAP_SERVERS}
+        OPENAI_API_URL: ${OPENAI_API_URL}
+        OPENAI_API_KEY: ${OPENAI_API_KEY}
+        OPENAI_MODEL: ${OPENAI_MODEL}
+      ports:
+      - "${AI_PROCESSOR_HOST_PORT}:${AI_PROCESSOR_CONTAINER_PORT}"
 
-  # ---------- Ollama (server) ----------
-  ollama:
-    image: ollama/ollama:latest
-    container_name: ollama
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama_data:/root/.ollama
-    restart: unless-stopped
+    result-service:
+      build:
+        context: ./server/result-service
+      container_name: result-service
+      depends_on:
+        - kafka
+        - mongo
+      environment:
+        SPRING_KAFKA_BOOTSTRAP_SERVERS: ${SPRING_KAFKA_BOOTSTRAP_SERVERS}
+        MONGODB_URI: ${MONGODB_URI}
+        DIGESTS_COMPLETED_TOPIC: ${DIGESTS_COMPLETED_TOPIC}
+        SERVER_PORT: ${RESULT_CONTAINER_PORT}
+      ports:
+        - "${RESULT_HOST_PORT}:${RESULT_CONTAINER_PORT}"
 
-  # ---------- Ollama model puller ----------
-  ollama-init:
-    image: ollama/ollama:latest
-    container_name: ollama-init
-    depends_on:
-      - ollama
-    environment:
-      OLLAMA_HOST: "http://ollama:11434"
-    entrypoint: [ "/bin/bash", "-lc", "sleep 3 && ollama pull llama3" ]
-    volumes:
-      - ollama_data:/root/.ollama
-    restart: "no"
+    client:
+      build:
+        context: ./client
+      container_name: client
+      depends_on:
+        - ingestion-service
+        - result-service
+      ports:
+        - "8888:80"
 
-volumes:
-  kafka_data:
-  mongo_data:
-  ollama_data:
+  volumes:
+    kafka_data:
+    mongo_data:
+

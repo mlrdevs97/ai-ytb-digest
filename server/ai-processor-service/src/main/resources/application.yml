@@ -1,0 +1,71 @@
+server:
+  port: ${AI_PROCESSOR_HOST_PORT}
+
+spring:
+  application:
+    name: ai-processor-service
+
+  main:
+    web-application-type: none
+  cloud:
+    function:
+      definition: digestProcessor
+    stream:
+      bindings:
+        digestProcessor-in-0:
+          destination: ${TRANSCRIPTS_TOPIC}
+          group: ai-processor
+          contentType: application/json
+          consumer:
+            useNativeDecoding: false
+        digestProcessor-out-0:
+          destination: ${DIGESTS_COMPLETED_TOPIC}
+          contentType: application/json
+          producer:
+            useNativeEncoding: false
+      kafka:
+        binder:
+          brokers: ${SPRING_CLOUD_STREAM_KAFKA_BINDER_BROKERS}
+          autoCreateTopics: true
+        bindings:
+          digestProcessor-in-0:
+            consumer:
+              ackMode: BATCH
+              startOffset: latest
+
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY}
+      base-url: ${OPENAI_API_URL}
+      chat:
+        options:
+          model: ${OPENAI_MODEL}
+          temperature: 0.2
+          responseFormat:
+            type: JSON_SCHEMA
+            name: digest_schema
+            schema: |
+              {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "summary": { "type": "string" },
+                  "tags": {
+                    "type": "array",
+                    "items": { "type": "string" },
+                    "maxItems": 10
+                  },
+                  "sentiment": {
+                    "type": "string",
+                    "enum": ["positive","neutral","negative"]
+                  }
+                },
+                "required": ["summary","tags","sentiment"]
+              }
+
+logging:
+  level:
+    root: INFO
+    org.springframework.cloud.stream: INFO
+    org.springframework.ai: INFO

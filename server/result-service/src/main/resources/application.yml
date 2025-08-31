@@ -1,0 +1,30 @@
+server:
+  port: ${RESULT_CONTAINER_PORT}
+
+spring:
+  application:
+    name: result-service
+
+  data:
+    mongodb:
+      uri: ${MONGODB_URI}
+
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS}
+    consumer:
+      group-id: result-service
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "es.mlrdevs97.vdigest.result.model.*"
+        spring.json.value.default.type: "es.mlrdevs97.vdigest.result.model.DigestCompletedEvent"
+
+app:
+  kafka:
+    topics:
+      digests-completed: ${DIGESTS_COMPLETED_TOPIC}
+
+logging:
+  level:
+    com.tractive.vdigest.result: INFO
+    org.apache.kafka: WARN

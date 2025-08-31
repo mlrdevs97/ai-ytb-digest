@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <title>AI YouTube Digest — Client</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <link rel="stylesheet" href="styles.css"/>
+</head>
+<body>
+<header>
+    <h1>AI-Powered YouTube Digest</h1>
+    <p class="sub">Paste a YouTube URL → get a summary, tags & sentiment.</p>
+</header>
+
+<main>
+    <form id="digest-form">
+        <input id="youtubeUrl" name="youtubeUrl" type="url" placeholder="https://www.youtube.com/watch?v=..." required/>
+        <button type="submit">Create digest</button>
+    </form>
+
+    <section id="status" class="hidden"></section>
+
+    <section id="result" class="hidden">
+        <div class="card">
+            <h2>Summary</h2>
+            <p id="summary"></p>
+        </div>
+        <div class="card">
+            <h3>Tags</h3>
+            <div id="tags" class="tags"></div>
+        </div>
+        <div class="meta">
+            <span>requestId: <code id="reqid"></code></span>
+            <span>video: <a id="videoLink" href="#" target="_blank" rel="noreferrer">open</a></span>
+        </div>
+        <div class="reset">
+            <button id="reset">Try another</button>
+        </div>
+    </section>
+</main>
+
+<footer>
+    <small>AI Powered YouTube Video Digest.</small>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>
